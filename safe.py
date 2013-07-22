@@ -1,7 +1,6 @@
 from subprocess import Popen, PIPE
-from csv import reader, writer
+import pickle
 import StringIO
-
 
 def encrypt(plain):
 	p=Popen(["gpg", "-a", "-c"], stdout=PIPE, stdin=PIPE)
@@ -19,23 +18,36 @@ def decrypt(cypher):
 
 def loadfile(filename):
 	with open(filename) as f:
-		cypher=f.read()
-		plain_file=decrypt(cypher)
-		spamreader=reader(plain_file.splitlines())
-		for row in spamreader:
-			print ', '.join(row)
-
-def savefile(filename):
+		data=f.read()
+		plain_data=decrypt(data)
+		record=pickle.loads(plain_data)
+		return record
+	
+def savefile(filename, record):
+	print "save"
 	plain_file=StringIO.StringIO()
-    	spamwriter = writer(plain_file)
-    	spamwriter.writerow(['Spam'] * 5 + ['Baked Beans'])
-    	spamwriter.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
+	pickle.dump(record, plain_file)
 	cypher=encrypt(plain_file.getvalue())
-	with open(filename,"wb") as f:
+	with open(filename, "wb") as f:
 		f.write(cypher)
-	plain_file.close()
-	
+
+
+class record:
+	def __init__(	self,
+		 	name, 
+			acc_num,
+			valid_from,
+			expire,
+			 card_num):
+		self.name=name
+		self.acc_num=acc_num
+		self.valid_from=valid_from
+		self.expire=expire
+		self.card_num=card_num
+
 if __name__=='__main__':
-	savefile('test.db')
-	loadfile('test.db')
-	
+	r=record("Barclloyds", '123456', '01/01/1950', '01/01/2050','123456789012345')
+	savefile('test.db', r)
+	del r
+	r2=loadfile('test.db')
+	print r2.name
