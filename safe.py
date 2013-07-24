@@ -1,6 +1,13 @@
+from Tkinter import *
 from subprocess import Popen, PIPE
-import pickle
 import StringIO
+import hashlib
+
+dbfile="test.db"
+db=None
+sha1=None
+values=None
+current=0
 
 def encrypt(plain):
 	p=Popen(["gpg", "-a", "-c"], stdout=PIPE, stdin=PIPE)
@@ -16,38 +23,63 @@ def decrypt(cypher):
 	p.stdin.close()
 	return plain
 
-def loadfile(filename):
-	with open(filename) as f:
+def loadfile():
+	global dbfile
+	global db
+	global sha1
+	with open(dbfile) as f:
 		data=f.read()
-		plain_data=decrypt(data)
-		record=pickle.loads(plain_data)
-		return record
+		db=eval(decrypt(data))
+		del data
+		sha1=hashlib.sha1()
+		sha1.update( str(db) )
+		print sha1.hexdigest() 
 	
-def savefile(filename, record):
-	print "save"
-	plain_file=StringIO.StringIO()
-	pickle.dump(record, plain_file)
-	cypher=encrypt(plain_file.getvalue())
-	with open(filename, "wb") as f:
+def savefile():
+	global dbfile
+	global db
+	print t.get()
+	with open(dbfile, "wb") as f:
+		plain_file=StringIO.StringIO()
+		plain_file.write(db)
+		cypher=encrypt(plain_file.getvalue())
 		f.write(cypher)
+		plain_file.close()
+		del plain_file
+		del cypher
 
+def prev():
+	global db
+	global current
+	if current>0:
+		current-=1
+		print "prev"
 
-class record:
-	def __init__(	self,
-		 	name, 
-			acc_num,
-			valid_from,
-			expire,
-			 card_num):
-		self.name=name
-		self.acc_num=acc_num
-		self.valid_from=valid_from
-		self.expire=expire
-		self.card_num=card_num
+def next():
+	global db
+	global current
+	if current<len(db):
+		current+=1
+		print "next"
+
 
 if __name__=='__main__':
-	r=record("Barclloyds", '123456', '01/01/1950', '01/01/2050','123456789012345')
-	savefile('test.db', r)
-	del r
-	r2=loadfile('test.db')
-	print r2.name
+	loadfile()
+	root = Tk()
+	menubar = Menu(root)
+	root.config(menu=menubar)
+	fileMenu=Menu(menubar)
+	fileMenu.add_command(label='Save', command= savefile) 
+	menubar.add_cascade(label="File",  menu=fileMenu)
+	# Data
+	values=[]
+	for i, key in enumerate( db[current].keys() ):
+ 		Label(root, text=key,  borderwidth=1 ).grid(row=i,column=1)
+		values.append( StringVar() )
+		values[i].set(db[current][key])
+ 		Entry(root, text=db[current][key],  borderwidth=1, textvariable=values[i] ).grid(row=i,column=2)
+	# Buttons
+	Button(root, text="prev", command=prev).grid( row=len( db[current] ) , column=1 ) 
+	Button(root, text="next", command=prev).grid( row=len( db[current] ), column=2 ) 
+	
+	root.mainloop()
